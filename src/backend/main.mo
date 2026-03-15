@@ -69,9 +69,7 @@ actor {
     name : Text;
   };
 
-  // Stable maps — StoredProduct keeps the original schema
   let products = Map.empty<Text, StoredProduct>();
-  // Separate stable map for discounts (productId -> discountedPriceInCents)
   let productDiscounts = Map.empty<Text, Nat>();
   let categories = Map.empty<Text, Category>();
   let orders = Map.empty<Text, Order>();
@@ -82,6 +80,47 @@ actor {
   include MixinStorage();
 
   var stripeConfig : ?Stripe.StripeConfiguration = null;
+
+  // Seed default data — called on fresh install AND postupgrade
+  func seedDefaultData() {
+    categories.add(
+      "pod_kits",
+      {
+        id = "pod_kits";
+        name = "Pod Kits";
+        description = "Starter pod kits";
+        isActive = true;
+      },
+    );
+    categories.add(
+      "devices",
+      {
+        id = "devices";
+        name = "Devices";
+        description = "Vape devices";
+        isActive = true;
+      },
+    );
+    if (products.get("caliburn-g3-lite") == null) {
+      products.add(
+        "caliburn-g3-lite",
+        {
+          id = "caliburn-g3-lite";
+          name = "Caliburn G3 Lite";
+          description = "The Caliburn G3 Lite is a compact and stylish pod kit delivering a smooth, satisfying vape experience. Lightweight design with impressive performance.";
+          priceInCents = 350000;
+          category = "Devices";
+          imageUrl = "/assets/uploads/G3-Lite-1.jpg";
+          stockQuantity = 50;
+          isActive = true;
+        },
+      );
+      productDiscounts.add("caliburn-g3-lite", 280000);
+    };
+  };
+
+  // Run on fresh canister install (canister_init)
+  let _initSeed : () = seedDefaultData();
 
   // Helper: merge stored product with discount info
   func toProduct(p : StoredProduct) : Product {
@@ -282,41 +321,8 @@ actor {
 
   system func preupgrade() {};
 
+  // Also seed on canister upgrade (maps are non-stable, reset on upgrade)
   system func postupgrade() {
-    categories.add(
-      "pod_kits",
-      {
-        id = "pod_kits";
-        name = "Pod Kits";
-        description = "Starter pod kits";
-        isActive = true;
-      },
-    );
-    categories.add(
-      "devices",
-      {
-        id = "devices";
-        name = "Devices";
-        description = "Vape devices";
-        isActive = true;
-      },
-    );
-    // Seed: Caliburn G3 Lite
-    if (products.get("caliburn-g3-lite") == null) {
-      products.add(
-        "caliburn-g3-lite",
-        {
-          id = "caliburn-g3-lite";
-          name = "Caliburn G3 Lite";
-          description = "The Caliburn G3 Lite is a compact and stylish pod kit delivering a smooth, satisfying vape experience. Lightweight design with impressive performance.";
-          priceInCents = 350000;
-          category = "Devices";
-          imageUrl = "/assets/uploads/G3-Lite-1.jpg";
-          stockQuantity = 50;
-          isActive = true;
-        },
-      );
-      productDiscounts.add("caliburn-g3-lite", 280000);
-    };
+    seedDefaultData();
   };
 };
